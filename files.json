@@ -1,0 +1,9 @@
+{
+  "name": "discord-bot-files",
+  "files": [
+    {
+      "name": "PRIME.py",
+      "contents": "# Dein Python-Bot-Code kommt hier hin!\n\nimport discord\nimport os\n\nTOKEN = os.getenv('DISCORD_TOKEN')\nPREFIX = os.getenv('BOT_PREFIX')\n\nintents = discord.Intents.default()\nintents.message_content = True\n\nclient = discord.Client(intents=intents)\n\n@client.event\nasync def on_ready():\n    print(f'Wir haben uns als {client.user} angemeldet')\n\n@client.event\nasync def on_message(message):\n    if message.author == client.user:\n        return\n\n    if message.content.startswith(PREFIX):\n        command = message.content[len(PREFIX):].split()[0]\n        if command == 'hallo':\n            await message.channel.send('Hallo! 👋')\n\nclient.run(TOKEN)\n"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "PRIME-bot-logs",
+  "logs": {
+    "custom": {
+      "type": "text",
+      "location": "logs/latest.log"
+    }
+  },
+  "display": {
+    "type": "text",
+    "location": "logs/latest.log"
+  }
+}
