@@ -1,30 +1,56 @@
+# prime.py
 import discord
 import os
+import asyncio
+from datetime import datetime
+from discord.ext import commands
 
-# Token deines Bots. Es ist am besten, dies als Umgebungsvariable zu speichern.
-# Für den Anfang kannst du es hier direkt einfügen, aber für die Produktion
-# solltest du es sicher speichern (z.B. mit python-dotenv).
-TOKEN = 'MTQxNDIxNzE3ODQxNjE1MjYxNw.GYk5it.XvUlJhBYsiEniJtDPte_cYQvRjWKlSR9PwUSFQ' # Ersetze dies durch dein kopiertes Token
+# Lese Token und Prefix aus Umgebungsvariablen
+TOKEN = os.getenv("TOKEN")
+PREFIX = os.getenv("PREFIX", ".")
+TEMP_CHANNEL_ID = os.getenv("TEMP_CHANNEL_ID", "1414304729244106833")  # Optional: als Variable konfigurierbar machen
 
+if not TOKEN:
+    raise RuntimeError("❌ Umgebungsvariable 'TOKEN' nicht gesetzt!")
+
+# Intents
 intents = discord.Intents.default()
-intents.message_content = True # Erforderlich, um Nachrichteninhalt lesen zu können
+intents.voice_states = True
+intents.members = True
+intents.guilds = True
+intents.message_content = True
 
-client = discord.Client(intents=intents)
+# Bot initialisieren
+bot = commands.Bot(command_prefix=PREFIX, intents=intents, help_command=None)
 
-@client.event
+# TEMP_CHANNEL_ID als Bot-Attribut speichern (für Cog zugänglich)
+bot.TEMP_CHANNEL_ID = TEMP_CHANNEL_ID
+
+def log(message: str):
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{now}] {message}")
+
+@bot.event
 async def on_ready():
-    print(f'Bot ist eingeloggt als {client.user}')
-    print('------')
+    log(f"Bot eingeloggt als {bot.user} ({bot.user.id})")
+    
+    # Lade Cogs
+    try:
+        await bot.load_extension("cogs.leveling")
+        log("[COGS] Leveling-Cog geladen.")
+    except Exception as e:
+        log(f"[COGS] Fehler beim Laden von Leveling-Cog: {e}")
 
-@client.event
-async def on_message(message):
-    if message.author == client.user:
-        return
+    try:
+        await bot.load_extension("cogs.voice_manager")
+        log("[COGS] VoiceManager-Cog geladen.")
+    except Exception as e:
+        log(f"[COGS] Fehler beim Laden von VoiceManager-Cog: {e}")
 
-    if message.content.startswith('$hallo'):
-        await message.channel.send('Hallo zurück!')
+    log("Bot ist bereit!")
+    log("------")
 
-    if message.content.startswith('$info'):
-        await message.channel.send(f'Ich bin {client.user.name}, dein Bot-Freund!')
+# ⚠️ on_voice_state_update wurde ENTFERNT — wird jetzt vom Cog behandelt!
 
-client.run(TOKEN)
+# Bot starten
+bot.run(TOKEN)
