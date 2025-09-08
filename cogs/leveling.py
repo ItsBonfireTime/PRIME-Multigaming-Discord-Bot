@@ -41,14 +41,6 @@ class LevelingCog(commands.Cog):
         user_id = message.author.id
         now = datetime.utcnow()
 
-        # Cooldown: Nur alle 60 Sekunden XP geben
-        if user_id in self.cooldowns:
-            last_msg = self.cooldowns[user_id]
-            if now - last_msg < timedelta(seconds=60):
-                return
-
-        self.cooldowns[user_id] = now
-
         # XP vergeben (5-15 XP)
         xp_gain = random.randint(5, 15)
 
