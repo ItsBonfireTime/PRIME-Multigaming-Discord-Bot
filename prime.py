@@ -46,6 +46,12 @@ async def on_ready():
         log("[COGS] VoiceManager-Cog geladen.")
     except Exception as e:
         log(f"[COGS] Fehler beim Laden von VoiceManager-Cog: {e}")
+        
+    try:
+        await bot.load_extension("cogs.twitch_alerts")
+        log("[COGS] TwitchAlerts-Cog geladen.")
+    except Exception as e:
+        log(f"[COGS] Fehler beim Laden von TwitchAlerts-Cog: {e}")
 
     log("Bot ist bereit!")
     log("------")

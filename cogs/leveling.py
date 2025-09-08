@@ -9,6 +9,7 @@ class LevelingCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.cooldowns = {}  # {user_id: last_message_time}
+        self.levelup_channel_id = 1414703506681761893  # Fester Kanal für Level-Up-Nachrichten
 
     async def cog_load(self):
         """Wird beim Laden des Cogs ausgeführt — erstellt DB-Tabelle"""
@@ -26,7 +27,15 @@ class LevelingCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        if message.author.bot:
+        # IGNORIERE:
+        # - Bots
+        # - Systemnachrichten
+        # - Leere Nachrichten
+        if (
+            message.author.bot or
+            message.type != discord.MessageType.default or
+            not message.content.strip()
+        ):
             return
 
         user_id = message.author.id
@@ -44,12 +53,10 @@ class LevelingCog(commands.Cog):
         xp_gain = random.randint(5, 15)
 
         async with aiosqlite.connect("leveling.db") as db:
-            # Hole aktuellen XP-Stand
             cursor = await db.execute("SELECT xp, level FROM users WHERE user_id = ?", (user_id,))
             row = await cursor.fetchone()
 
             if not row:
-                # Neuer Benutzer
                 await db.execute(
                     "INSERT INTO users (user_id, xp, level, last_message) VALUES (?, ?, ?, ?)",
                     (user_id, xp_gain, 1, now.isoformat())
@@ -59,16 +66,20 @@ class LevelingCog(commands.Cog):
             else:
                 current_xp, current_level = row
                 new_xp = current_xp + xp_gain
-
-                # Level-Up-Formel: level = floor(sqrt(xp) / 10) + 1
                 new_level = int(new_xp ** 0.5 / 10) + 1
 
                 if new_level > current_level:
-                    # Level-Up!
-                    await message.channel.send(
-                        f"🎉 **Level Up!** {message.author.mention} ist jetzt Level **{new_level}**!",
-                        delete_after=10
-                    )
+                    # Level-Up! Sende Nachricht im festen Kanal
+                    levelup_channel = self.bot.get_channel(self.levelup_channel_id)
+                    if levelup_channel:
+                        try:
+                            await levelup_channel.send(
+                                f"🎉 **Level Up!** {message.author.mention} ist jetzt Level **{new_level}**!"
+                            )
+                        except discord.Forbidden:
+                            print(f"[LEVELING] Keine Rechte, um in Kanal {self.levelup_channel_id} zu senden.")
+                    else:
+                        print(f"[LEVELING] Level-Up-Kanal mit ID {self.levelup_channel_id} nicht gefunden!")
 
                 await db.execute(
                     "UPDATE users SET xp = ?, level = ?, last_message = ? WHERE user_id = ?",
@@ -90,12 +101,11 @@ class LevelingCog(commands.Cog):
                 return
 
             xp, level = row
-            next_level_xp = ((level + 1) * 10) ** 2  # Umgekehrte Formel
+            next_level_xp = ((level + 1) * 10) ** 2
             current_level_xp = (level * 10) ** 2
             xp_needed = next_level_xp - current_level_xp
             xp_current = xp - current_level_xp
 
-            # Fortschrittsbalken
             progress = min(int((xp_current / xp_needed) * 10), 10)
             bar = "🟩" * progress + "⬜" * (10 - progress)
 
@@ -140,3 +150,4 @@ class LevelingCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(LevelingCog(bot))
+    print("[COGS] LevelingCog mit festem Level-Up-Kanal geladen.")
