@@ -63,33 +63,39 @@ class PrimeEconomyCog(commands.Cog):
         await ctx.send_help(ctx.command)
 
     @prime_convert.command(name="xp")
-    async def convert_xp(self, ctx, amount: int):
-        """Wandle XP in Coins um (100 XP = 1 Coin) — NUR im Economy-Channel"""
-        self.check_channel(ctx)
-        if amount <= 0:
-            await ctx.send("❌ Du musst mehr als 0 XP umwandeln!")
+async def convert_xp(self, ctx, amount: int):
+    """Wandle XP in Coins um (100 XP = 1 Coin) — liest XP aus leveling.db"""
+    self.check_channel(ctx)
+    if amount <= 0:
+        await ctx.send("❌ Du musst mehr als 0 XP umwandeln!")
+        return
+
+    # Lies XP aus leveling.db (nicht economy.db!)
+    async with aiosqlite.connect("leveling.db") as db:
+        cursor = await db.execute("SELECT xp FROM users WHERE user_id = ?", (ctx.author.id,))
+        row = await cursor.fetchone()
+        if not row or row[0] < amount:
+            await ctx.send("❌ Du hast nicht genug XP!")
             return
 
-        async with aiosqlite.connect("economy.db") as db:
-            cursor = await db.execute("SELECT xp FROM users WHERE user_id = ?", (ctx.author.id,))
-            row = await cursor.fetchone()
-            if not row or row[0] < amount:
-                await ctx.send("❌ Du hast nicht genug XP!")
-                return
+        coins = amount // 100
+        if coins == 0:
+            await ctx.send("❌ Du brauchst mindestens 100 XP für 1 Coin!")
+            return
 
-            coins = amount // 100
-            if coins == 0:
-                await ctx.send("❌ Du brauchst mindestens 100 XP für 1 Coin!")
-                return
+        # XP abbuchen in leveling.db
+        await db.execute("UPDATE users SET xp = xp - ? WHERE user_id = ?", (amount, ctx.author.id))
+        await db.commit()
 
-            await db.execute("UPDATE users SET xp = xp - ? WHERE user_id = ?", (amount, ctx.author.id))
-            await db.execute(
-                "INSERT INTO coins (user_id, balance) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET balance = balance + ?",
-                (ctx.author.id, coins, coins)
-            )
-            await db.commit()
+    # Coins gutschreiben in economy.db
+    async with aiosqlite.connect("economy.db") as db:
+        await db.execute(
+            "INSERT INTO coins (user_id, balance) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET balance = balance + ?",
+            (ctx.author.id, coins, coins)
+        )
+        await db.commit()
 
-            await ctx.send(f"✅ Du hast **{amount} XP** in **{coins} Coins** umgewandelt!")
+    await ctx.send(f"✅ Du hast **{amount} XP** in **{coins} Coins** umgewandelt!")
 
     @prime.group(name="bank", invoke_without_command=True)
     async def prime_bank(self, ctx):
