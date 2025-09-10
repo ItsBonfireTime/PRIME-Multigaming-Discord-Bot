@@ -1,14 +1,15 @@
 # prime.py
 import discord
-from discord.ext import commands
 import os
 import asyncio
 import json
 import aiohttp.web as web
 import jinja2
 import aiohttp_jinja2
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone  # 🔹 timezone importiert
 import aiosqlite
+import sys
+from discord.ext import commands
 
 # Lade Konfiguration
 try:
@@ -24,7 +25,7 @@ TOKEN = os.getenv("TOKEN")
 PREFIX = os.getenv("PREFIX", ".")
 TEMP_CHANNEL_ID = os.getenv("TEMP_CHANNEL_ID", "1414304729244106833")
 DASHBOARD_PORT = int(os.getenv("DASHBOARD_PORT", 1234))
-DASHBOARD_PASSWORD = os.getenv("DASHBOARD_PASSWORD", None)  # Optional
+DASHBOARD_PASSWORD = os.getenv("DASHBOARD_PASSWORD", None)
 
 if not TOKEN:
     raise RuntimeError("❌ TOKEN nicht gesetzt!")
@@ -38,14 +39,14 @@ intents.message_content = True
 bot = commands.Bot(command_prefix=PREFIX, intents=intents, help_command=None)
 bot.TEMP_CHANNEL_ID = TEMP_CHANNEL_ID
 bot.config = CONFIG
-bot.start_time = datetime.utcnow()
+bot.start_time = datetime.now(timezone.utc)  # 🔹 Korrektur hier
 
 # Globaler Logger
 async def log_to_channel(message: str, level: str = "INFO"):
     log_channel_id = bot.config["channels"]["log_channel"]
     log_channel = bot.get_channel(log_channel_id)
     if log_channel:
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")  # 🔹 Korrektur hier
         emoji = "✅" if level == "SUCCESS" else "⚠️" if level == "WARNING" else "❌" if level == "ERROR" else "ℹ️"
         try:
             await log_channel.send(f"`[{now}]` {emoji} **{level}**: {message}")
@@ -59,12 +60,55 @@ bot.log = log_to_channel
 app = web.Application()
 aiohttp_jinja2.setup(app, loader=jinja2.FileSystemLoader("dashboard/templates"))
 
-async def dashboard_handler(request):
-    if DASHBOARD_PASSWORD:
-        auth = request.headers.get("Authorization")
-        if not auth or not auth.startswith("Bearer ") or auth[7:] != DASHBOARD_PASSWORD:
-            return web.Response(status=401, text="Unauthorized")
+# Session Storage
+app['admin_sessions'] = set()
 
+async def login_handler(request):
+    if request.method == "POST":
+        data = await request.post()
+        password = data.get("password")
+        if password == DASHBOARD_PASSWORD:
+            session_id = str(hash(password + str(datetime.now(timezone.utc))))  # 🔹 Korrektur hier
+            app['admin_sessions'].add(session_id)
+            response = web.HTTPFound("/admin")
+            response.set_cookie("admin_session", session_id, max_age=3600)
+            return response
+        else:
+            context = {"error": "Falsches Passwort!"}
+            response = aiohttp_jinja2.render_template("login.html", request, context)
+            return response
+    else:
+        context = {}
+        response = aiohttp_jinja2.render_template("login.html", request, context)
+        return response
+
+async def admin_handler(request):
+    session_id = request.cookies.get("admin_session")
+    if not session_id or session_id not in app['admin_sessions']:
+        return web.HTTPFound("/login")
+
+    guilds = [{"id": g.id, "name": g.name} for g in bot.guilds]
+    uptime = str(datetime.now(timezone.utc) - bot.start_time).split(".")[0]  # 🔹 Korrektur hier
+
+    context = {
+        "guilds": guilds,
+        "uptime": uptime,
+        "server_name": bot.guilds[0].name if bot.guilds else "Kein Server",
+        "python_version": sys.version
+    }
+
+    response = aiohttp_jinja2.render_template("admin.html", request, context)
+    return response
+
+async def logout_handler(request):
+    session_id = request.cookies.get("admin_session")
+    if session_id in app['admin_sessions']:
+        app['admin_sessions'].remove(session_id)
+    response = web.HTTPFound("/")
+    response.del_cookie("admin_session")
+    return response
+
+async def dashboard_handler(request):
     # Top 10 Level
     top_level = []
     try:
@@ -98,10 +142,8 @@ async def dashboard_handler(request):
     active_streamers = []
     try:
         twitch_cog = bot.get_cog("TwitchAlertsCog")
-        if twitch_cog and twitch_cog.last_streams:
-            # Hier müsstest du die aktiven Streams aus der API holen — vereinfacht:
-            # Für Demo: Nehme an, last_streams enthält aktive Streamer
-            for streamer_login, stream_id in twitch_cog.last_streams.items():
+        if twitch_cog and hasattr(twitch_cog, 'last_streams'):
+            for streamer_login in twitch_cog.last_streams.keys():
                 active_streamers.append({
                     "user_name": streamer_login,
                     "game_name": "Live",
@@ -116,7 +158,7 @@ async def dashboard_handler(request):
         birthday_cog = bot.get_cog("BirthdayManagerCog")
         if birthday_cog:
             birthdays = birthday_cog.load_birthdays()
-            today = datetime.utcnow().date()
+            today = datetime.now(timezone.utc).date()  # 🔹 Korrektur hier
             week_end = today + timedelta(days=7)
             for user_id_str, data in birthdays.items():
                 day, month, year = map(int, data["date"].split("."))
@@ -135,13 +177,8 @@ async def dashboard_handler(request):
     except Exception as e:
         await bot.log(f"Fehler beim Laden von Geburtstagen: {e}", "ERROR")
 
-    # Server-Name
-    server_name = "PRIME-Server"
-    if bot.guilds:
-        server_name = bot.guilds[0].name
-
-    # Uptime
-    uptime = str(datetime.utcnow() - bot.start_time).split(".")[0]
+    server_name = bot.guilds[0].name if bot.guilds else "PRIME-Server"
+    uptime = str(datetime.now(timezone.utc) - bot.start_time).split(".")[0]  # 🔹 Korrektur hier
 
     context = {
         "top_level": top_level,
@@ -155,10 +192,14 @@ async def dashboard_handler(request):
     response = aiohttp_jinja2.render_template("index.html", request, context)
     return response
 
+# Routes
 app.router.add_get("/", dashboard_handler)
+app.router.add_get("/login", login_handler)
+app.router.add_post("/login", login_handler)
+app.router.add_get("/admin", admin_handler)
+app.router.add_get("/logout", logout_handler)
 
 async def start_dashboard():
-    """Startet den Dashboard-Webserver"""
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", DASHBOARD_PORT)
@@ -168,8 +209,6 @@ async def start_dashboard():
 @bot.event
 async def on_ready():
     await bot.log(f"Bot eingeloggt als {bot.user} ({bot.user.id})", "SUCCESS")
-    
-    # Starte Dashboard
     asyncio.create_task(start_dashboard())
 
     cogs = [

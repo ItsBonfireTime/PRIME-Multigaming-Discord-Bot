@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PRIME-Bot Admin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <nav class="navbar navbar-dark fixed-top">
+        <div class="container">
+            <a class="navbar-brand glow-yellow" href="/admin">
+                🛠️ PRIME-Bot Admin Dashboard
+            </a>
+            <a href="/logout" class="btn btn-outline-light btn-sm">Logout</a>
+        </div>
+    </nav>
+
+    <div class="container" style="padding-top: 5rem;">
+        <div class="alert alert-info">
+            Willkommen, Admin! Hier kannst du das System verwalten.
+        </div>
+
+        <div class="admin-section">
+            <h3>Twitch-Streamer verwalten</h3>
+            <form method="POST" action="/admin/twitch/add">
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" name="streamer_name" placeholder="Streamer Name" required>
+                    </div>
+                    <div class="col-md-4">
+                        <select class="form-control" name="guild_id" required>
+                            <option value="">Server auswählen</option>
+                            {% for guild in guilds %}
+                                <option value="{{ guild.id }}">{{ guild.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary w-100">Hinzufügen</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="admin-section">
+            <h3>Benutzer verwalten</h3>
+            <form method="POST" action="/admin/user/reset">
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <input type="text" class="form-control" name="user_id" placeholder="User ID" required>
+                    </div>
+                    <div class="col-md-6">
+                        <select class="form-control" name="action" required>
+                            <option value="reset_xp">XP zurücksetzen</option>
+                            <option value="reset_coins">Coins zurücksetzen</option>
+                            <option value="delete_user">User löschen</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-danger mt-2">Aktion ausführen</button>
+            </form>
+        </div>
+
+        <div class="admin-section">
+            <h3>Systeminformationen</h3>
+            <p><strong>Bot Uptime:</strong> {{ uptime }}</p>
+            <p><strong>Server:</strong> {{ server_name }}</p>
+            <p><strong>Python Version:</strong> {{ python_version }}</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
