@@ -6,6 +6,7 @@ python-dotenv>=1.0.0
 
 # Asynchrone HTTP-Anfragen (falls du Webhooks/APIs nutzt)
 aiohttp>=3.9.0
+jinja2>=3.1.0
 
 # Für Datenbanken (optional)
 # asyncpg>=0.29.0          # PostgreSQL

@@ -13,16 +13,15 @@ class TwitchAlertsCog(commands.Cog):
         self.client_id = os.getenv("TWITCH_CLIENT_ID")
         self.client_secret = os.getenv("TWITCH_CLIENT_SECRET")
         self.access_token = None
-        self.last_streams = {}  # {streamer_login: last_stream_id}
+        self.last_streams = {}
 
         if not self.client_id or not self.client_secret:
             raise RuntimeError("❌ TWITCH_CLIENT_ID oder TWITCH_CLIENT_SECRET nicht gesetzt!")
 
         self.check_streams.start()
-        print("[TWITCH] TwitchAlertsCog initialisiert.")
+        asyncio.create_task(self.bot.log("TwitchAlertsCog initialisiert.", "INFO"))
 
     async def cog_load(self):
-        """Erstellt die Datenbanktabellen beim Laden des Cogs"""
         async with aiosqlite.connect("twitch_alerts.db") as db:
             await db.execute("""
                 CREATE TABLE IF NOT EXISTS watched_streamers (
@@ -35,13 +34,75 @@ class TwitchAlertsCog(commands.Cog):
                 )
             """)
             await db.commit()
-        print("[TWITCH] Datenbanktabelle 'watched_streamers' bereit.")
+        await self.bot.log("TwitchAlertsCog: Datenbanktabelle erstellt.", "INFO")
+
+        if not self.bot.get_command("prime"):
+            @commands.group(name="prime", invoke_without_command=True)
+            async def prime(ctx):
+                await ctx.send("Verwende `.prime twitch ...` oder `.prime bank ...`")
+            self.bot.add_command(prime)
+
+        prime_cmd = self.bot.get_command("prime")
+        if prime_cmd:
+            @prime_cmd.group(name="twitch", invoke_without_command=True)
+            async def prime_twitch(ctx):
+                await ctx.send_help(ctx.command)
+
+            @prime_twitch.command(name="add")
+            @commands.has_permissions(manage_guild=True)
+            async def twitch_add(ctx, channel_name: str, alert_channel: discord.TextChannel = None):
+                alert_channel = alert_channel or ctx.channel
+                async with aiosqlite.connect("twitch_alerts.db") as db:
+                    try:
+                        await db.execute(
+                            "INSERT INTO watched_streamers (guild_id, streamer_login, alert_channel_id, added_by) VALUES (?, ?, ?, ?)",
+                            (ctx.guild.id, channel_name.lower(), alert_channel.id, ctx.author.id)
+                        )
+                        await db.commit()
+                        await ctx.send(f"✅ Twitch-Streamer **{channel_name}** wird ab jetzt überwacht! Benachrichtigungen in {alert_channel.mention}")
+                        await self.bot.log(f"{ctx.author} hat {channel_name} zur Twitch-Überwachung hinzugefügt.", "SUCCESS")
+                    except aiosqlite.IntegrityError:
+                        await ctx.send(f"❌ **{channel_name}** wird bereits überwacht!")
+
+            @prime_twitch.command(name="list")
+            async def twitch_list(ctx):
+                async with aiosqlite.connect("twitch_alerts.db") as db:
+                    cursor = await db.execute(
+                        "SELECT streamer_login, alert_channel_id FROM watched_streamers WHERE guild_id = ?",
+                        (ctx.guild.id,)
+                    )
+                    rows = await cursor.fetchall()
+
+                    if not rows:
+                        await ctx.send("ℹ️ Es werden aktuell keine Twitch-Streamer überwacht.")
+                        return
+
+                    embed = discord.Embed(title="📺 Überwachte Twitch-Streamer", color=0x9146FF)
+                    for streamer_login, channel_id in rows:
+                        channel = self.bot.get_channel(channel_id)
+                        embed.add_field(
+                            name=streamer_login,
+                            value=f"Benachrichtigungen in: {channel.mention if channel else 'Unbekannt'}",
+                            inline=False
+                        )
+                    await ctx.send(embed=embed)
+
+            @prime_twitch.command(name="remove")
+            @commands.has_permissions(manage_guild=True)
+            async def twitch_remove(ctx, channel_name: str):
+                async with aiosqlite.connect("twitch_alerts.db") as db:
+                    await db.execute(
+                        "DELETE FROM watched_streamers WHERE guild_id = ? AND streamer_login = ?",
+                        (ctx.guild.id, channel_name.lower())
+                    )
+                    await db.commit()
+                    await ctx.send(f"✅ **{channel_name}** wird nicht mehr überwacht.")
+                    await self.bot.log(f"{ctx.author} hat {channel_name} aus der Twitch-Überwachung entfernt.", "INFO")
 
     def cog_unload(self):
         self.check_streams.cancel()
 
     async def get_access_token(self):
-        """Holt einen neuen OAuth2-Token von Twitch"""
         url = "https://id.twitch.tv/oauth2/token"
         params = {
             "client_id": self.client_id,
@@ -54,12 +115,11 @@ class TwitchAlertsCog(commands.Cog):
                 data = await resp.json()
                 if resp.status == 200:
                     self.access_token = data["access_token"]
-                    print("[TWITCH] Neuer Access Token erhalten.")
+                    await self.bot.log("Twitch Access Token erhalten.", "SUCCESS")
                 else:
-                    print(f"[TWITCH] FEHLER beim Token-Holen: {data}")
+                    await self.bot.log(f"Twitch Token-Fehler: {data}", "ERROR")
 
     async def fetch_streams(self, logins):
-        """Holt Stream-Daten für mehrere Streamer"""
         if not self.access_token:
             await self.get_access_token()
             if not self.access_token:
@@ -75,17 +135,15 @@ class TwitchAlertsCog(commands.Cog):
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers, params=params) as resp:
                 if resp.status != 200:
-                    print(f"[TWITCH] API-Fehler: {resp.status}")
+                    await self.bot.log(f"Twitch API-Fehler: {resp.status}", "ERROR")
                     return []
                 data = await resp.json()
                 return data.get("data", [])
 
     @tasks.loop(seconds=60)
     async def check_streams(self):
-        """Prüft alle 60 Sekunden alle überwachten Streamer"""
         await self.bot.wait_until_ready()
 
-        # Sammle alle eindeutigen Streamer aus allen Servern
         streamers_per_guild = {}
         async with aiosqlite.connect("twitch_alerts.db") as db:
             cursor = await db.execute("SELECT guild_id, streamer_login, alert_channel_id FROM watched_streamers")
@@ -96,7 +154,6 @@ class TwitchAlertsCog(commands.Cog):
                     streamers_per_guild[guild_id] = []
                 streamers_per_guild[guild_id].append((streamer_login, alert_channel_id))
 
-        # Prüfe Streams
         all_streamers = list(set(s[0] for guild in streamers_per_guild.values() for s in guild))
         if not all_streamers:
             return
@@ -118,7 +175,6 @@ class TwitchAlertsCog(commands.Cog):
                 last_stream_id = self.last_streams.get(streamer_login)
 
                 if current_stream_id and current_stream_id != last_stream_id:
-                    # NEUER STREAM — sende Benachrichtigung
                     self.last_streams[streamer_login] = current_stream_id
 
                     stream_data = next((s for s in streams if s["user_login"] == streamer_login), None)
@@ -144,12 +200,11 @@ class TwitchAlertsCog(commands.Cog):
 
                     try:
                         await channel.send(content="@everyone 🎥 **LIVE-BENACHRICHTIGUNG**", embed=embed)
-                        print(f"[TWITCH] Benachrichtigung gesendet für {streamer_login} in Guild {guild_id}")
+                        await self.bot.log(f"Twitch-Benachrichtigung für {streamer_login} in Guild {guild_id} gesendet.", "SUCCESS")
                     except Exception as e:
-                        print(f"[TWITCH] Fehler beim Senden: {e}")
+                        await self.bot.log(f"Fehler beim Senden der Twitch-Benachrichtigung: {e}", "ERROR")
 
                 elif not current_stream_id and streamer_login in self.last_streams:
-                    # Streamer offline → reset
                     del self.last_streams[streamer_login]
 
     @check_streams.before_loop
@@ -157,72 +212,6 @@ class TwitchAlertsCog(commands.Cog):
         await self.bot.wait_until_ready()
         await asyncio.sleep(5)
 
-    @commands.group(name="prime", invoke_without_command=True)
-    async def prime(self, ctx):
-        """Hauptbefehl für PRIME-Bot Funktionen"""
-        await ctx.send("Verwende `.prime twitch add <channel>` oder `.prime twitch list`")
-
-    @prime.group(name="twitch", invoke_without_command=True)
-    async def prime_twitch(self, ctx):
-        """Verwalte Twitch-Streamer-Benachrichtigungen"""
-        await ctx.send_help(ctx.command)
-
-    @prime_twitch.command(name="add")
-    @commands.has_permissions(manage_guild=True)
-    async def twitch_add(self, ctx, channel_name: str, alert_channel: discord.TextChannel = None):
-        """Füge einen Twitch-Streamer zur Live-Benachrichtigung hinzu
-        
-        Beispiel: .prime twitch add itsbonfiretime #stream-benachrichtigungen
-        """
-        alert_channel = alert_channel or ctx.channel
-
-        async with aiosqlite.connect("twitch_alerts.db") as db:
-            try:
-                await db.execute(
-                    "INSERT INTO watched_streamers (guild_id, streamer_login, alert_channel_id, added_by) VALUES (?, ?, ?, ?)",
-                    (ctx.guild.id, channel_name.lower(), alert_channel.id, ctx.author.id)
-                )
-                await db.commit()
-                await ctx.send(f"✅ Twitch-Streamer **{channel_name}** wird ab jetzt überwacht! Benachrichtigungen in {alert_channel.mention}")
-            except aiosqlite.IntegrityError:
-                await ctx.send(f"❌ **{channel_name}** wird bereits überwacht!")
-
-    @prime_twitch.command(name="list")
-    async def twitch_list(self, ctx):
-        """Zeigt alle überwachten Twitch-Streamer an"""
-        async with aiosqlite.connect("twitch_alerts.db") as db:
-            cursor = await db.execute(
-                "SELECT streamer_login, alert_channel_id FROM watched_streamers WHERE guild_id = ?",
-                (ctx.guild.id,)
-            )
-            rows = await cursor.fetchall()
-
-            if not rows:
-                await ctx.send("ℹ️ Es werden aktuell keine Twitch-Streamer überwacht.")
-                return
-
-            embed = discord.Embed(title="📺 Überwachte Twitch-Streamer", color=0x9146FF)
-            for streamer_login, channel_id in rows:
-                channel = self.bot.get_channel(channel_id)
-                embed.add_field(
-                    name=streamer_login,
-                    value=f"Benachrichtigungen in: {channel.mention if channel else 'Unbekannt'}",
-                    inline=False
-                )
-            await ctx.send(embed=embed)
-
-    @prime_twitch.command(name="remove")
-    @commands.has_permissions(manage_guild=True)
-    async def twitch_remove(self, ctx, channel_name: str):
-        """Entfernt einen Twitch-Streamer aus der Überwachung"""
-        async with aiosqlite.connect("twitch_alerts.db") as db:
-            await db.execute(
-                "DELETE FROM watched_streamers WHERE guild_id = ? AND streamer_login = ?",
-                (ctx.guild.id, channel_name.lower())
-            )
-            await db.commit()
-            await ctx.send(f"✅ **{channel_name}** wird nicht mehr überwacht.")
-
 async def setup(bot):
     await bot.add_cog(TwitchAlertsCog(bot))
-    print("[COGS] TwitchAlertsCog (mit Datenbank & Commands) geladen.")
+    await bot.log("TwitchAlertsCog geladen.", "SUCCESS")

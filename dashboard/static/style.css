@@ -1,0 +1,172 @@
+/* PRIME-Bot Dashboard — Custom Styles */
+:root {
+    --prime-blue: #2c3e50;
+    --prime-orange: #e67e22;
+    --prime-gold: #f1c40f;
+    --prime-dark: #1a1a1a;
+    --prime-light: #ecf0f1;
+}
+
+body {
+    background-color: var(--prime-light);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    padding-top: 4.5rem;
+    color: #333;
+}
+
+/* Navbar */
+.navbar {
+    background: linear-gradient(90deg, var(--prime-blue), var(--prime-orange)) !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.navbar-brand {
+    font-weight: 800;
+    font-size: 1.5rem;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+/* Cards */
+.stat-card {
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    border: none;
+    margin-bottom: 20px;
+    background: white;
+}
+
+.stat-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.card-header {
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid rgba(255,255,255,0.2);
+    border-top-left-radius: 15px !important;
+    border-top-right-radius: 15px !important;
+}
+
+.bg-success { background: linear-gradient(135deg, #27ae60, #2ecc71) !important; }
+.bg-warning { background: linear-gradient(135deg, #f39c12, #e67e22) !important; }
+.bg-info { background: linear-gradient(135deg, #3498db, #2980b9) !important; }
+.bg-danger { background: linear-gradient(135deg, #e74c3c, #c0392b) !important; }
+
+.card-body {
+    padding: 1.5rem;
+}
+
+/* Lists */
+.card-body ol, .card-body ul {
+    padding-left: 1.2rem;
+}
+
+.card-body li {
+    padding: 0.4rem 0;
+    border-bottom: 1px dashed #eee;
+    transition: background 0.2s;
+}
+
+.card-body li:hover {
+    background: rgba(241, 196, 15, 0.05);
+}
+
+.card-body li:last-child {
+    border-bottom: none;
+}
+
+/* Icons & Emojis */
+.card-header:before {
+    content: attr(data-icon);
+    margin-right: 8px;
+    font-size: 1.2em;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    body {
+        padding-top: 5rem;
+    }
+    
+    .navbar-brand {
+        font-size: 1.3rem;
+    }
+    
+    .stat-card {
+        margin-bottom: 15px;
+    }
+    
+    .card-body li {
+        font-size: 0.95rem;
+        padding: 0.3rem 0;
+    }
+}
+
+/* Refresh Indicator */
+#refresh-indicator {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(44, 62, 80, 0.9);
+    color: white;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+#refresh-indicator.show {
+    opacity: 1;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--prime-orange);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--prime-blue);
+}
+
+/* Loading Animation */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+/* Footer (optional) */
+.footer {
+    margin-top: 3rem;
+    padding: 2rem 0;
+    background: var(--prime-dark);
+    color: white;
+    text-align: center;
+}
+
+.footer a {
+    color: var(--prime-gold);
+    text-decoration: none;
+}
+
+.footer a:hover {
+    text-decoration: underline;
+}
