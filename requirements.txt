@@ -1,22 +1,21 @@
 # Discord Bot Framework
 discord.py>=2.3.2
 
-# Umgebungsvariablen aus .env laden (optional, aber empfohlen)
+# Umgebungsvariablen
 python-dotenv>=1.0.0
 
-# Asynchrone HTTP-Anfragen (falls du Webhooks/APIs nutzt)
+# HTTP Client (für Twitch API, Web-Dashboard)
 aiohttp>=3.9.0
-jinja2>=3.1.0
 
-# Für Datenbanken (optional)
-# asyncpg>=0.29.0          # PostgreSQL
-aiosqlite>=0.19.0        # SQLite
+# Asynchrone SQLite (für Leveling, Economy, Twitch, Birthday)
+aiosqlite>=0.19.0
 
-# Für JSON-Logging, Configs, etc.
-orjson>=3.9.0
+# Web Dashboard: Templating
+Jinja2>=3.1.0
 
-# Falls du Pillow für Bilder/Banner brauchst
-# Pillow>=10.0.0
+# Web Dashboard: aiohttp-jinja2 Integration
+aiohttp-jinja2>=1.5.0
 
-# Falls du Voice-Funktionen nutzt
-# PyNaCl>=1.5.0
+# Optional: Für zukünftige Erweiterungen (z. B. JSON Web Tokens, CORS, etc.)
+# aiohttp-cors>=0.7.0
+# PyJWT>=2.8.0
