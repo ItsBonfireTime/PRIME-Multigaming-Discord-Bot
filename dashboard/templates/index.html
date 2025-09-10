@@ -6,58 +6,76 @@
     <title>PRIME-Bot Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎮</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>">
 </head>
 <body>
     <nav class="navbar navbar-dark fixed-top">
         <div class="container">
-            <a class="navbar-brand" href="#">
-                <span class="pulse">🎮 PRIME-Bot Dashboard</span>
+            <a class="navbar-brand glow-yellow" href="/">
+                📊 PRIME-Bot Dashboard
             </a>
-            <span class="text-white d-none d-md-block">
-                {{ server_name }} | Uptime: {{ uptime }}
-            </span>
+            <a href="/login" class="btn btn-outline-light btn-sm">Admin Login</a>
         </div>
     </nav>
 
-    <div class="container">
+    <div class="container" style="padding-top: 5rem;">
+        <div class="alert alert-primary text-center">
+            <strong>Server:</strong> {{ server_name }} | <strong>Uptime:</strong> {{ uptime }}
+        </div>
+
         <div class="row g-4 mb-4">
-            <div class="col-md-6">
+            <div class="col-lg-6">
                 <div class="card stat-card">
-                    <div class="card-header bg-success text-white" data-icon="🏆">
-                        Top 10 Level
+                    <div class="card-header" data-icon="🏆">
+                        🏆 Top 10 Level (XP-basiert)
                     </div>
                     <div class="card-body">
                         {% if top_level %}
-                            <ol class="list-unstyled">
+                            <div class="list-group list-group-flush">
                             {% for user in top_level %}
-                                <li class="py-2 border-bottom">
-                                    <strong>{{ user.name }}</strong> — Level {{ user.level }} ({{ user.xp }} XP)
-                                </li>
+                                <div class="list-group-item bg-transparent border-bottom">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong>{{ user.name }}</strong>
+                                            <div class="text-muted small">Level {{ user.level }} · {{ user.xp }} XP</div>
+                                        </div>
+                                        <span class="badge bg-success rounded-pill">{{ loop.index }}</span>
+                                    </div>
+                                </div>
                             {% endfor %}
-                            </ol>
+                            </div>
                         {% else %}
-                            <p class="text-muted">Keine Daten verfügbar</p>
+                            <div class="text-center text-muted py-3">
+                                <em>Keine Level-Daten verfügbar</em>
+                            </div>
                         {% endif %}
                     </div>
                 </div>
             </div>
-            <div class="col-md-6">
+            <div class="col-lg-6">
                 <div class="card stat-card">
-                    <div class="card-header bg-warning text-dark" data-icon="💰">
-                        Top 10 Coins
+                    <div class="card-header" data-icon="💰">
+                        💰 Top 10 Coins (Wirtschaft)
                     </div>
                     <div class="card-body">
                         {% if top_coins %}
-                            <ol class="list-unstyled">
+                            <div class="list-group list-group-flush">
                             {% for user in top_coins %}
-                                <li class="py-2 border-bottom">
-                                    <strong>{{ user.name }}</strong> — {{ user.balance }} Coins
-                                </li>
+                                <div class="list-group-item bg-transparent border-bottom">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong>{{ user.name }}</strong>
+                                            <div class="text-muted small">{{ user.balance }} Coins</div>
+                                        </div>
+                                        <span class="badge bg-warning text-dark rounded-pill">{{ loop.index }}</span>
+                                    </div>
+                                </div>
                             {% endfor %}
-                            </ol>
+                            </div>
                         {% else %}
-                            <p class="text-muted">Keine Daten verfügbar</p>
+                            <div class="text-center text-muted py-3">
+                                <em>Keine Coin-Daten verfügbar</em>
+                            </div>
                         {% endif %}
                     </div>
                 </div>
@@ -65,53 +83,74 @@
         </div>
 
         <div class="row g-4 mb-4">
-            <div class="col-md-6">
+            <div class="col-lg-6">
                 <div class="card stat-card">
-                    <div class="card-header bg-info text-white" data-icon="📺">
-                        Aktive Twitch-Streamer
+                    <div class="card-header" data-icon="📺">
+                        📺 Aktive Twitch-Streamer
                     </div>
                     <div class="card-body">
                         {% if active_streamers %}
-                            <ul class="list-unstyled">
+                            <div class="list-group list-group-flush">
                             {% for streamer in active_streamers %}
-                                <li class="py-2 border-bottom">
-                                    <span class="text-danger">🔴</span> <strong>{{ streamer.user_name }}</strong> — 
-                                    {{ streamer.game_name }} ({{ streamer.viewer_count }} Zuschauer)
-                                </li>
+                                <div class="list-group-item bg-transparent border-bottom">
+                                    <div class="d-flex align-items-center">
+                                        <span class="text-danger me-2">🔴</span>
+                                        <div>
+                                            <strong>{{ streamer.user_name }}</strong>
+                                            <div class="text-muted small">
+                                                {{ streamer.game_name }} · {{ streamer.viewer_count }} Zuschauer
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             {% endfor %}
-                            </ul>
+                            </div>
                         {% else %}
-                            <p class="text-muted">Keine aktiven Streamer</p>
+                            <div class="text-center text-muted py-3">
+                                <em>Keine aktiven Streamer</em>
+                            </div>
                         {% endif %}
                     </div>
                 </div>
             </div>
-            <div class="col-md-6">
+            <div class="col-lg-6">
                 <div class="card stat-card">
-                    <div class="card-header bg-danger text-white" data-icon="🎂">
-                        Nächste Geburtstage
+                    <div class="card-header" data-icon="🎂">
+                        🎂 Nächste Geburtstage (7 Tage)
                     </div>
                     <div class="card-body">
                         {% if upcoming_birthdays %}
-                            <ul class="list-unstyled">
+                            <div class="list-group list-group-flush">
                             {% for bday in upcoming_birthdays %}
-                                <li class="py-2 border-bottom">
-                                    <span class="text-warning">🎂</span> <strong>{{ bday.name }}</strong> — 
-                                    {{ bday.date }} (in {{ bday.days_until }} Tagen)
-                                </li>
+                                <div class="list-group-item bg-transparent border-bottom">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong>{{ bday.name }}</strong>
+                                            <div class="text-muted small">
+                                                {{ bday.date }} · in {{ bday.days_until }} Tagen
+                                            </div>
+                                        </div>
+                                        {% if bday.days_until == 0 %}
+                                            <span class="badge bg-danger">HEUTE!</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
                             {% endfor %}
-                            </ul>
+                            </div>
                         {% else %}
-                            <p class="text-muted">Keine Geburtstage in den nächsten 7 Tagen</p>
+                            <div class="text-center text-muted py-3">
+                                <em>Keine Geburtstage in den nächsten 7 Tagen</em>
+                            </div>
                         {% endif %}
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="text-center mt-5">
-            <div class="badge bg-primary">
-                Dashboard aktualisiert sich automatisch alle 30 Sekunden
+        <div class="text-center mt-4">
+            <div class="alert alert-info alert-dismissible fade show" role="alert">
+                <strong>💡 Hinweis:</strong> Dieses Dashboard aktualisiert sich automatisch alle 30 Sekunden.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         </div>
     </div>
@@ -123,7 +162,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Auto-Refresh mit Countdown
         let countdown = 30;
         const countdownElement = document.getElementById('countdown');
         const refreshIndicator = document.getElementById('refresh-indicator');
@@ -132,7 +170,6 @@
             countdown--;
             countdownElement.textContent = countdown;
             
-            // Zeige Indikator 5 Sekunden vor Refresh
             if (countdown <= 5) {
                 refreshIndicator.classList.add('show');
             }
@@ -142,7 +179,6 @@
             }
         }, 1000);
 
-        // Verstecke Indikator nach 3 Sekunden (wenn nicht gerade countdown <=5)
         setInterval(() => {
             if (countdown > 5) {
                 refreshIndicator.classList.remove('show');

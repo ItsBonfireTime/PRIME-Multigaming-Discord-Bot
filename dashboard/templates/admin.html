@@ -18,56 +18,135 @@
     </nav>
 
     <div class="container" style="padding-top: 5rem;">
-        <div class="alert alert-info">
-            Willkommen, Admin! Hier kannst du das System verwalten.
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <strong>🔐 Admin-Zugriff aktiv!</strong> Du hast vollen Zugriff auf das System.
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
 
-        <div class="admin-section">
-            <h3>Twitch-Streamer verwalten</h3>
-            <form method="POST" action="/admin/twitch/add">
-                <div class="row g-2">
-                    <div class="col-md-4">
-                        <input type="text" class="form-control" name="streamer_name" placeholder="Streamer Name" required>
+        <ul class="nav nav-tabs mb-4">
+            <li class="nav-item">
+                <a class="nav-link active" data-bs-toggle="tab" href="#twitch">Twitch-Streamer</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#users">Benutzer</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#system">System</a>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- Twitch Tab -->
+            <div class="tab-pane fade show active" id="twitch">
+                <div class="card stat-card">
+                    <div class="card-header" data-icon="➕">
+                        ➕ Twitch-Streamer hinzufügen
                     </div>
-                    <div class="col-md-4">
-                        <select class="form-control" name="guild_id" required>
-                            <option value="">Server auswählen</option>
-                            {% for guild in guilds %}
-                                <option value="{{ guild.id }}">{{ guild.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <button type="submit" class="btn btn-primary w-100">Hinzufügen</button>
+                    <div class="card-body">
+                        <form method="POST" action="/admin/twitch/add" class="row g-3">
+                            <div class="col-md-5">
+                                <label class="form-label">Streamer Name (Login)</label>
+                                <input type="text" class="form-control" name="streamer_name" placeholder="z.B. itsbonfiretime" required>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label">Ziel-Server</label>
+                                <select class="form-select" name="guild_id" required>
+                                    <option value="">Wähle einen Server...</option>
+                                    {% for guild in guilds %}
+                                        <option value="{{ guild.id }}">{{ guild.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary w-100">Hinzufügen</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
-            </form>
-        </div>
+            </div>
 
-        <div class="admin-section">
-            <h3>Benutzer verwalten</h3>
-            <form method="POST" action="/admin/user/reset">
-                <div class="row g-2">
-                    <div class="col-md-6">
-                        <input type="text" class="form-control" name="user_id" placeholder="User ID" required>
+            <!-- Users Tab -->
+            <div class="tab-pane fade" id="users">
+                <div class="card stat-card">
+                    <div class="card-header" data-icon="👤">
+                        👤 Benutzer verwalten
                     </div>
-                    <div class="col-md-6">
-                        <select class="form-control" name="action" required>
-                            <option value="reset_xp">XP zurücksetzen</option>
-                            <option value="reset_coins">Coins zurücksetzen</option>
-                            <option value="delete_user">User löschen</option>
-                        </select>
+                    <div class="card-body">
+                        <form method="POST" action="/admin/user/reset" class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">User ID</label>
+                                <input type="text" class="form-control" name="user_id" placeholder="z.B. 1234567890" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Aktion</label>
+                                <select class="form-select" name="action" required>
+                                    <option value="reset_xp">XP zurücksetzen</option>
+                                    <option value="reset_coins">Coins zurücksetzen</option>
+                                    <option value="delete_user">User löschen</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="submit" class="btn btn-danger w-100">Ausführen</button>
+                            </div>
+                        </form>
+                        <div class="alert alert-warning mt-3">
+                            <strong>⚠️ Warnung:</strong> Diese Aktionen sind irreversibel! Bitte doppelt prüfen.
+                        </div>
                     </div>
                 </div>
-                <button type="submit" class="btn btn-danger mt-2">Aktion ausführen</button>
-            </form>
-        </div>
+            </div>
 
-        <div class="admin-section">
-            <h3>Systeminformationen</h3>
-            <p><strong>Bot Uptime:</strong> {{ uptime }}</p>
-            <p><strong>Server:</strong> {{ server_name }}</p>
-            <p><strong>Python Version:</strong> {{ python_version }}</p>
+            <!-- System Tab -->
+            <div class="tab-pane fade" id="system">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="card stat-card">
+                            <div class="card-header" data-icon="⚙️">
+                                ⚙️ Systeminformationen
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item bg-transparent">
+                                        <strong>Bot Uptime:</strong> {{ uptime }}
+                                    </li>
+                                    <li class="list-group-item bg-transparent">
+                                        <strong>Server:</strong> {{ server_name }}
+                                    </li>
+                                    <li class="list-group-item bg-transparent">
+                                        <strong>Python Version:</strong> {{ python_version }}
+                                    </li>
+                                    <li class="list-group-item bg-transparent">
+                                        <strong>Discord.py Version:</strong> 2.3+
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card stat-card">
+                            <div class="card-header" data-icon="🔄">
+                                🔄 Bot-Steuerung
+                            </div>
+                            <div class="card-body">
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-outline-primary" type="button" disabled>
+                                        Bot neustarten
+                                    </button>
+                                    <button class="btn btn-outline-warning" type="button" disabled>
+                                        Cogs neu laden
+                                    </button>
+                                    <button class="btn btn-outline-danger" type="button" disabled>
+                                        Bot herunterfahren
+                                    </button>
+                                </div>
+                                <div class="alert alert-info mt-3">
+                                    <strong>ℹ️ Info:</strong> Diese Funktionen werden in zukünftigen Updates implementiert.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
